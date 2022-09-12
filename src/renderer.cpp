@@ -59,7 +59,7 @@ void cloud_renderer::set_view_angle_x(float r) {
 void cloud_renderer::resize(int width, int height) {
   if (!back_side && program) {
     back_side = new Framebuffer(width, height);
-    back_side->generateColorTexture();
+    back_side->generateColorTexture(GL_RGB32F);
     back_side->generateDepthBuffer();
   } else if (program)
     back_side->resize(width, height);
@@ -75,11 +75,10 @@ bool cloud_renderer::render(const Glib::RefPtr<Gdk::GLContext> &context) {
   if (!render_box) {
     init();
   }
-  glClearColor(0.2, 0.2, 0.5, 0);
+  glClearColor(0.2, 0.2, 0.5, 1.0);
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
   if (!back_side)
-    resize(context->get_surface()->get_width(),
-           context->get_surface()->get_height());
+    resize(last_width, last_height);
   program->start();
   render_box->bind();
   program->load("cammat", last_mat);
@@ -89,13 +88,13 @@ bool cloud_renderer::render(const Glib::RefPtr<Gdk::GLContext> &context) {
   back_side->bind();
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
   glCullFace(GL_FRONT);
-  program->load("backside", true);
+  program->load("backside", 1);
   render_box->draw();
   back_side->unbind();
 
   // front side
   glCullFace(GL_BACK);
-  program->load("backside", false);
+  program->load("backside", 0);
   program->loadTexture("backside_tex", back_side->getColorTexture(), 0);
   render_box->draw();
   render_box->unbind();
