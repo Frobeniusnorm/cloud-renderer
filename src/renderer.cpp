@@ -18,7 +18,7 @@ static const unsigned int indices[36]{// Top
 static glm::mat4 last_mat;
 static glm::vec3 last_eye;
 static int last_width, last_height;
-static float angle_r = 1.0472, angle_p = 0;
+static float angle_r = 1.0472, angle_p = 0, stepSize = 0.02;
 static Framebuffer *back_side = nullptr;
 static void update_camera_matrix(int width, int height) {
   last_width = width;
@@ -56,6 +56,7 @@ void cloud_renderer::set_view_angle_x(float r) {
   angle_p = (r / 360.0) * 2 * 3.141592;
   update_camera_matrix(last_width, last_height);
 }
+void cloud_renderer::set_step_size(float ss) { stepSize = ss; }
 void cloud_renderer::resize(int width, int height) {
   if (!back_side && program) {
     back_side = new Framebuffer(width, height);
@@ -95,6 +96,7 @@ bool cloud_renderer::render(const Glib::RefPtr<Gdk::GLContext> &context) {
   // front side
   glCullFace(GL_BACK);
   program->load("backside", 0);
+  program->load("stepSize", stepSize);
   program->loadTexture("backside_tex", back_side->getColorTexture(), 0);
   render_box->draw();
   render_box->unbind();

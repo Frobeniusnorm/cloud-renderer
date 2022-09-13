@@ -2,10 +2,12 @@
 
 in vec3 linspace;
 uniform vec3 eye;
+uniform float stepSize;
 uniform int backside;
 uniform sampler2D backside_tex;
 out vec4 color;
 
+const vec3 sun_dir = normalize(vec3(0, 1, 0));
 const vec3 domain_border_min = vec3(-1, -1, -1);
 const vec3 domain_border_max = vec3(1,1,2);
 
@@ -35,23 +37,35 @@ float onBorder(vec3 pos){
 }
 
 const vec3 skyColor = vec3(0.2, 0.2, 0.5);
-bool testFunc(vec3 coord){
-  return sin(coord.x * 10) * cos(coord.y * 5) + sin(coord.z * 3) > 0.5;
+float testFunc(vec3 coord){
+  return clamp((sin(coord.x * 5 + 0.9) * cos(coord.y * 3 - coord.z * 4.7) - sin(coord.z * 2.3 + coord.y * 3.3)*sin(coord.x*3.5))/2.0, 0.0, 1.0);
 }
-
+//marches a ray to the sun to calculate how much light is hitting the point
+float transmittanceRay(vec3 start, float density){
+  const int shadowSteps = 10;
+  float res = 1.0; 
+  for(int i = 0; i < shadowSteps; i++){
+    vec3 pos = start + (i+1) * stepSize * sun_dir * 1.5;
+    if(pos.y >= domain_border_max.y || pos.y <= domain_border_min.y) break; 
+    float samp = testFunc(pos) * density;
+    res *= (1.0 - samp);
+  }
+  return res;
+}
 vec4 raymarching(vec3 start, vec3 dir, vec3 end){
-  const vec3 matcol = vec3(.9);
-  const float stepSize = 0.02;
+  const vec3 matcol = vec3(1);
   const float stepPerc = stepSize / length(end-start);
-  const float density = stepSize * 4;
+  const float density = stepSize * 30;
   float transmittance = 1.0;
   vec3 final = vec3(0);
   for(float curr = 0.0; curr <= 1.0; curr += stepPerc){
     vec3 samp = start + curr * dir * length(end-start);
-    if(testFunc(samp)){
+    float samp_dens = testFunc(samp) * density;
+    if(samp_dens > 0.0){
       //hit now attenuate
-      final += matcol * transmittance * density;
-      transmittance = (transmittance * (1.0 - density));
+      float diffuse_co = transmittanceRay(samp, density) + 0.1;
+      final += matcol * diffuse_co * transmittance * samp_dens;
+      transmittance = (transmittance * (1.0 - samp_dens));
       if(transmittance < 0.05) break;
     }
   }

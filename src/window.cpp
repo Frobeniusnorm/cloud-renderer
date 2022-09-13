@@ -1,3 +1,4 @@
+#include "gtkmm/enums.h"
 #include "gtkmm/glarea.h"
 #include "gtkmm/scrolledwindow.h"
 #include "renderer.hpp"
@@ -12,6 +13,10 @@ static bool signal_y_rotation(Gtk::ScrollType, double newval) {
   cloud_renderer::set_view_angle_y(newval);
   return true;
 }
+static bool signal_step_size(Gtk::ScrollType, double newval) {
+  cloud_renderer::set_step_size(newval);
+  return true;
+}
 class CloudWindow : public Gtk::Window {
   Gtk::Paned divider;
   Gtk::Notebook settings_notebook;
@@ -22,17 +27,20 @@ class CloudWindow : public Gtk::Window {
     return true;
   }
   // render settings
-  Gtk::Scale x_rotation, y_rotation;
+  Gtk::Scale x_rotation, y_rotation, step_size;
   Gtk::ScrolledWindow render_settings;
-  Gtk::Box render_settings_content, x_rotation_box, y_rotation_box;
+  Gtk::Box render_settings_content, x_rotation_box, y_rotation_box,
+      step_size_box;
   void construct_render_settings() {
     render_settings.set_child(render_settings_content);
-    Gtk::Scale *scales[2] = {&x_rotation, &y_rotation};
-    Gtk::Box *boxes[2] = {&x_rotation_box, &y_rotation_box};
-    for (int i = 0; i < 2; i++) {
+    Gtk::Scale *scales[3] = {&x_rotation, &y_rotation, &step_size};
+    Gtk::Box *boxes[3] = {&x_rotation_box, &y_rotation_box, &step_size_box};
+    for (int i = 0; i < 3; i++) {
       scales[i]->set_range(0, 360);
       scales[i]->set_hexpand();
-      Gtk::Label label((i == 0 ? "x" : "y") + std::string("-rotation:"));
+      scales[i]->set_draw_value();
+      Gtk::Label label(i < 2 ? (i == 0 ? "x" : "y") + std::string("-rotation:")
+                             : "ray marching step size: ");
       boxes[i]->append(label);
       boxes[i]->set_margin_start(15);
       boxes[i]->set_hexpand();
@@ -45,6 +53,12 @@ class CloudWindow : public Gtk::Window {
                                              true);
     y_rotation.signal_change_value().connect(sigc::ptr_fun(&signal_y_rotation),
                                              true);
+    step_size.set_range(0.005, 0.1);
+    step_size.set_digits(4);
+    step_size.set_value(0.02);
+
+    step_size.signal_change_value().connect(sigc::ptr_fun(&signal_step_size),
+                                            true);
   }
 
 public:
@@ -53,9 +67,11 @@ public:
         l1("Clouds"), l2("Render"), l3("Clouds Renderer"), cloud_window(),
         x_rotation(Gtk::Orientation::HORIZONTAL),
         y_rotation(Gtk::Orientation::HORIZONTAL),
+        step_size(Gtk::Orientation::HORIZONTAL),
         render_settings_content(Gtk::Orientation::VERTICAL),
         x_rotation_box(Gtk::Orientation::HORIZONTAL),
-        y_rotation_box(Gtk::Orientation::HORIZONTAL) {
+        y_rotation_box(Gtk::Orientation::HORIZONTAL),
+        step_size_box(Gtk::Orientation::HORIZONTAL) {
     set_title("Cloud simulation");
     maximize();
     set_child(divider);
