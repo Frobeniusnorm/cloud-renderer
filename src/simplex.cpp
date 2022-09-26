@@ -24,7 +24,7 @@
  * or copy at http://opensource.org/licenses/MIT)
  */
 
-#include "simplex.h"
+#include "simplex.hpp"
 
 #include <cstdint> // int32_t/uint8_t
 

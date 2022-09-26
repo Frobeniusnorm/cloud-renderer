@@ -17,6 +17,10 @@ static bool signal_step_size(Gtk::ScrollType, double newval) {
   cloud_renderer::set_step_size(newval);
   return true;
 }
+static bool signal_radius(Gtk::ScrollType, double newval) {
+  cloud_renderer::set_radius(newval);
+  return true;
+}
 class CloudWindow : public Gtk::Window {
   Gtk::Paned divider;
   Gtk::Notebook settings_notebook;
@@ -27,20 +31,22 @@ class CloudWindow : public Gtk::Window {
     return true;
   }
   // render settings
-  Gtk::Scale x_rotation, y_rotation, step_size;
+  Gtk::Scale x_rotation, y_rotation, radius, step_size;
   Gtk::ScrolledWindow render_settings;
-  Gtk::Box render_settings_content, x_rotation_box, y_rotation_box,
+  Gtk::Box render_settings_content, x_rotation_box, y_rotation_box, radius_box,
       step_size_box;
   void construct_render_settings() {
     render_settings.set_child(render_settings_content);
-    Gtk::Scale *scales[3] = {&x_rotation, &y_rotation, &step_size};
-    Gtk::Box *boxes[3] = {&x_rotation_box, &y_rotation_box, &step_size_box};
-    for (int i = 0; i < 3; i++) {
+    Gtk::Scale *scales[4] = {&x_rotation, &y_rotation, &radius, &step_size};
+    Gtk::Box *boxes[4] = {&x_rotation_box, &y_rotation_box, &radius_box,
+                          &step_size_box};
+    for (int i = 0; i < 4; i++) {
       scales[i]->set_range(0, 360);
       scales[i]->set_hexpand();
       scales[i]->set_draw_value();
       Gtk::Label label(i < 2 ? (i == 0 ? "x" : "y") + std::string("-rotation:")
-                             : "ray marching step size: ");
+                       : (i == 2) ? "camera radius"
+                                  : "ray marching step size: ");
       boxes[i]->append(label);
       boxes[i]->set_margin_start(15);
       boxes[i]->set_hexpand();
@@ -53,6 +59,9 @@ class CloudWindow : public Gtk::Window {
                                              true);
     y_rotation.signal_change_value().connect(sigc::ptr_fun(&signal_y_rotation),
                                              true);
+    radius.set_value(1.0);
+    radius.set_range(0.1, 2.0);
+    radius.signal_change_value().connect(sigc::ptr_fun(&signal_radius), true);
     step_size.set_range(0.005, 0.1);
     step_size.set_digits(4);
     step_size.set_value(0.02);

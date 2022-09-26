@@ -3,7 +3,7 @@ in vec3 linspace;
 uniform vec3 eye;
 uniform float stepSize;
 uniform int backside;
-uniform sampler2D backside_tex;
+uniform sampler2D frontside_tex;
 out vec4 color;
 
 const vec3 sun_dir = normalize(vec3(0, 1, 0));
@@ -96,20 +96,22 @@ vec4 raymarching(vec3 start, vec3 dir, vec3 end){
 }
 
 void main(){
-  if(backside == 1){
-  color = vec4(linspace, 1.0);
+  if(backside == 0){
+    color = vec4(linspace, 1.0);
   }else{
     //raymarching
-    float front_border = onBorder(linspace);
+    float back_border = onBorder(linspace);
 
-    vec2 tc = (gl_FragCoord.xy) / textureSize(backside_tex, 0);
-    vec3 backside_pos = texture(backside_tex, tc).rgb;
-    float back_border = onBorder(backside_pos);
-    vec3 background = mix(skyColor, vec3(0.15), back_border);
+    vec2 tc = (gl_FragCoord.xy) / textureSize(frontside_tex, 0);
+    vec4 frontside_col = texture(frontside_tex, tc);
+    vec3 frontside_pos = frontside_col.a == 0.0 ? eye : frontside_col.rgb;
 
-    float total_length = length(backside_pos - linspace);
-    vec3 dir = normalize(backside_pos - linspace);
-    vec4 final = raymarching(linspace, dir, backside_pos);
+    float front_border = onBorder(frontside_pos);
+    vec3 background = mix(skyColor, vec3(0.15), front_border);
+
+    float total_length = length(linspace - frontside_pos);
+    vec3 dir = normalize(linspace - frontside_pos);
+    vec4 final = raymarching(frontside_pos, dir, linspace);
     final.rgb += (1.0 - final.a) * background;
     color = vec4(mix(final.rgb, vec3(0.15), front_border), 1.0);
   }

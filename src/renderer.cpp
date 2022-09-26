@@ -1,6 +1,8 @@
 #include "renderer.hpp"
 #include "framebuffer.hpp"
 #include "shader.hpp"
+#include "simplex.hpp"
+#include "texture.hpp"
 #include "vao.hpp"
 #include <GL/gl.h>
 #include <glm/glm.hpp>
@@ -15,16 +17,17 @@ static const unsigned int indices[36]{// Top
                                       5, 4, 0, 1, 5, 0, 6, 5, 1, 2, 6, 1,
                                       7, 6, 2, 3, 7, 2, 4, 7, 3, 0, 4, 3,
                                       6, 7, 4, 5, 6, 4, 1, 0, 3, 2, 1, 3};
+static GLuint noise2D;
 static glm::mat4 last_mat;
 static glm::vec3 last_eye;
 static int last_width, last_height;
-static float angle_r = 1.0472, angle_p = 0, stepSize = 0.02;
+static float angle_r = 1.0472, angle_p = 0, stepSize = 0.02, radius_scale = 1.0;
 static Framebuffer *back_side = nullptr;
 static void update_camera_matrix(int width, int height) {
   last_width = width;
   last_height = height;
   using namespace glm;
-  static const float radius = 3.f;
+  float radius = 3.f * radius_scale;
   last_eye = vec3(0, 0.5, 0.5) + radius * vec3(sin(angle_r) * sin(angle_p),
                                                cos(angle_r),
                                                sin(angle_r) * cos(angle_p));
@@ -47,6 +50,13 @@ void cloud_renderer::init() {
   render_box->addIndexBuffer(&indices[0], 36);
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
+  // Generate Noise
+  std::vector<float> nd2d(64 * 64);
+#pragma omp parallel for
+  for (int i = 0; i < 64; i++)
+    for (int j = 0; j < 64; j++)
+      nd2d[i * 64 + j] = SimplexNoise::noise(i / 8.0, j / 8.0);
+  noise2D = Texture::loadBinary(nd2d.data(), 64, 64, 1);
 }
 void cloud_renderer::set_view_angle_y(float p) {
   angle_r = (p / 360.0) * 2 * 3.141592;
@@ -56,17 +66,22 @@ void cloud_renderer::set_view_angle_x(float r) {
   angle_p = (r / 360.0) * 2 * 3.141592;
   update_camera_matrix(last_width, last_height);
 }
+void cloud_renderer::set_radius(float r) {
+  radius_scale = r;
+  update_camera_matrix(last_width, last_height);
+}
 void cloud_renderer::set_step_size(float ss) { stepSize = ss; }
 void cloud_renderer::resize(int width, int height) {
   if (!back_side && program) {
     back_side = new Framebuffer(width, height);
-    back_side->generateColorTexture(GL_RGB32F);
+    back_side->generateColorTexture(GL_RGBA32F);
     back_side->generateDepthBuffer();
   } else if (program)
     back_side->resize(width, height);
   update_camera_matrix(width, height);
 }
 void cloud_renderer::cleanup() {
+  glDeleteTextures(1, &noise2D);
   delete render_box;
   delete program;
   if (back_side)
@@ -87,17 +102,18 @@ bool cloud_renderer::render(const Glib::RefPtr<Gdk::GLContext> &context) {
 
   // backside
   back_side->bind();
+  glClearColor(0, 0, 0, 0);
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-  glCullFace(GL_FRONT);
-  program->load("backside", 1);
+  glCullFace(GL_BACK);
+  program->load("backside", 0);
   render_box->draw();
   back_side->unbind();
 
   // front side
-  glCullFace(GL_BACK);
-  program->load("backside", 0);
+  glCullFace(GL_FRONT);
+  program->load("backside", 1);
   program->load("stepSize", stepSize);
-  program->loadTexture("backside_tex", back_side->getColorTexture(), 0);
+  program->loadTexture("frontside_tex", back_side->getColorTexture(), 0);
   render_box->draw();
   render_box->unbind();
   program->stop();
