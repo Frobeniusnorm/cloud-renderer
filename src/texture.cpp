@@ -145,8 +145,8 @@ GLuint Texture::loadBinary(float *data, int width, int height, int channels,
   return foo;
 }
 GLuint Texture::loadBinary3D(unsigned char *data, int width, int height,
-                             int channels, GLint wrap, GLint minFilter,
-                             GLint magFilter) {
+                             int depth, int channels, GLint wrap,
+                             GLint minFilter, GLint magFilter) {
   GLuint foo;
   glGenTextures(1, &foo);
   glBindTexture(GL_TEXTURE_3D, foo);
@@ -154,12 +154,12 @@ GLuint Texture::loadBinary3D(unsigned char *data, int width, int height,
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, wrap);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, magFilter);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, minFilter);
-  glTexImage2D(GL_TEXTURE_3D, 0,
+  glTexImage3D(GL_TEXTURE_3D, 0,
                channels == 4   ? GL_RGBA32F
                : channels == 3 ? GL_RGB32F
                : channels == 2 ? GL_RG32F
                                : GL_R32F,
-               width, height, 0,
+               width, height, depth, 0,
                channels == 4   ? GL_RGBA
                : channels == 3 ? GL_RGB
                : channels == 2 ? GL_RG
@@ -168,21 +168,19 @@ GLuint Texture::loadBinary3D(unsigned char *data, int width, int height,
 
   return foo;
 }
-GLuint Texture::loadBinary3D(float *data, int width, int height, int channels,
-                             GLint wrap, GLint minFilter, GLint magFilter) {
+GLuint Texture::loadBinary3D(float *data, int width, int height, int depth,
+                             int channels, GLint wrap, GLint minFilter,
+                             GLint magFilter) {
   GLuint foo;
   glGenTextures(1, &foo);
   glBindTexture(GL_TEXTURE_3D, foo);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, wrap);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, wrap);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, magFilter);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, minFilter);
-  glTexImage2D(GL_TEXTURE_3D, 0,
+
+  glTexImage3D(GL_TEXTURE_3D, 0,
                channels == 4   ? GL_RGBA32F
                : channels == 3 ? GL_RGB32F
                : channels == 2 ? GL_RG32F
                                : GL_R32F,
-               width, height, 0,
+               width, height, depth, 0,
                channels == 4   ? GL_RGBA
                : channels == 3 ? GL_RGB
                : channels == 2 ? GL_RG

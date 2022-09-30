@@ -480,6 +480,30 @@ public:
     glBindTexture(GL_TEXTURE_2D, tex);
     glUniform1i(i, unit);
   }
+  /**
+   * Loads an image to a uniform variable. The image is automatically bound.
+   * @param id the identifier of that uniform variable
+   * @param tex the opengl id for the texture
+   * @param unit the texture socket this texture should be loaded to. Will be
+   * automatically assigned if -1.
+   */
+  void loadTexture3D(std::string id, GLuint tex, int unit = -1) {
+    GLint i;
+    if (uniformCache.find(id) == uniformCache.end()) {
+      uniformCache.insert({id, glGetUniformLocation(this->id, id.c_str())});
+      i = uniformCache[id];
+      if (i == -1) {
+        return;
+      }
+    } else
+      i = uniformCache[id];
+    if (unit < 0)
+      unit = activeTextures;
+    activeTextures++;
+    glActiveTexture(GL_TEXTURE0 + unit);
+    glBindTexture(GL_TEXTURE_3D, tex);
+    glUniform1i(i, unit);
+  }
 };
 class ComputeShader : public ShaderProgram {
 private:

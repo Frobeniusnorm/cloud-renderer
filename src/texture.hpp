@@ -43,11 +43,11 @@ struct Texture {
                            GLint wrap = GL_REPEAT, GLint minFilter = GL_LINEAR,
                            GLint magFilter = GL_LINEAR);
   static GLuint loadBinary3D(unsigned char *data, int width, int height,
-                             int channels, GLint wrap = GL_REPEAT,
+                             int depth, int channels, GLint wrap = GL_REPEAT,
                              GLint minFilter = GL_LINEAR,
                              GLint magFilter = GL_LINEAR);
-  static GLuint loadBinary3D(float *data, int width, int height, int channels,
-                             GLint wrap = GL_REPEAT,
+  static GLuint loadBinary3D(float *data, int width, int height, int depth,
+                             int channels, GLint wrap = GL_REPEAT,
                              GLint minFilter = GL_LINEAR,
                              GLint magFilter = GL_LINEAR);
   static void enableTextureMipMapping(GLuint tex);
