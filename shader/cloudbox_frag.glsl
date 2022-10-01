@@ -4,31 +4,15 @@ uniform vec3 eye;
 uniform float stepSize;
 uniform int backside;
 uniform sampler2D frontside_tex;
+uniform sampler2D noise2D;
+uniform float time;
 out vec4 color;
 
 const vec3 sun_dir = normalize(vec3(0, 1, 0));
 const vec3 domain_border_min = vec3(-1, -1, -1);
 const vec3 domain_border_max = vec3(1,1,2);
-vec2 hash( vec2 p ) // replace this by something better
-{
-	p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) );
-	return -1.0 + 2.0*fract(sin(p)*43758.5453123);
-}
-
-float noise( in vec2 p )
-{
-    const float K1 = 0.366025404; // (sqrt(3)-1)/2;
-    const float K2 = 0.211324865; // (3-sqrt(3))/6;
-
-	vec2  i = floor( p + (p.x+p.y)*K1 );
-    vec2  a = p - i + (i.x+i.y)*K2;
-    float m = step(a.y,a.x); 
-    vec2  o = vec2(m,1.0-m);
-    vec2  b = a - o + K2;
-	vec2  c = a - 1.0 + 2.0*K2;
-    vec3  h = max( 0.5-vec3(dot(a,a), dot(b,b), dot(c,c) ), 0.0 );
-	vec3  n = h*h*h*h*vec3( dot(a,hash(i+0.0)), dot(b,hash(i+o)), dot(c,hash(i+1.0)));
-    return dot( n, vec3(70.0) );
+float noise(in vec2 x){
+  return texture(noise2D, x).r;
 }
 float onBorder(vec3 pos){
   const float border_size = 0.002 * length(eye - pos);
@@ -56,12 +40,11 @@ float onBorder(vec3 pos){
 }
 
 const vec3 skyColor = vec3(0.2, 0.2, 0.5);
-float testFunc(vec3 coord){
-  coord *= 3.0;
-  return clamp(noise(vec2(coord.x * 0.5, coord.z *0.5)) * (1.0 - coord.y * coord.y) - abs(coord.y*coord.y), 0.0, 1.0);
-  
-  
-
+float testFunc(vec3 x){
+  vec3 p = x;
+  p.xy = p.xy * 0.5 + 0.5;
+  p.z = (p.z + 1.0)/3.0;
+  return noise(p.xz - p.y * p.x + p.z);
 }
 //marches a ray to the sun to calculate how much light is hitting the point
 float transmittanceRay(vec3 start, float density){

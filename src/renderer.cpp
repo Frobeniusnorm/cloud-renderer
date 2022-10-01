@@ -5,10 +5,12 @@
 #include "texture.hpp"
 #include "vao.hpp"
 #include <GL/gl.h>
+#include <chrono>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <gtkmm.h>
+#include <random>
 static const float vertices[24]{-1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
                                 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
                                 -1.0f, -1.0f, 2.0f,  1.0f,  -1.0f, 2.0f,
@@ -17,12 +19,19 @@ static const unsigned int indices[36]{// Top
                                       5, 4, 0, 1, 5, 0, 6, 5, 1, 2, 6, 1,
                                       7, 6, 2, 3, 7, 2, 4, 7, 3, 0, 4, 3,
                                       6, 7, 4, 5, 6, 4, 1, 0, 3, 2, 1, 3};
+static void GLAPIENTRY messageCallback(GLenum source, GLenum type, GLuint id,
+                                       GLenum severity, GLsizei length,
+                                       const GLchar *message,
+                                       const void *userParam) {
+  std::cerr << std::string(message) << std::endl;
+}
 static GLuint noise2D;
 static glm::mat4 last_mat;
 static glm::vec3 last_eye;
 static int last_width, last_height;
 static float angle_r = 1.0472, angle_p = 0, stepSize = 0.02, radius_scale = 1.0;
 static Framebuffer *back_side = nullptr;
+static std::chrono::steady_clock::time_point start_point;
 static void update_camera_matrix(int width, int height) {
   last_width = width;
   last_height = height;
@@ -43,20 +52,29 @@ void cloud_renderer::init() {
   if (glewInit() != GLEW_OK) {
     std::cerr << "GLEW not initialized!" << std::endl;
   }
+
   program = new ShaderProgram("shader/cloudbox_vert.glsl",
                               "shader/cloudbox_frag.glsl", {"coords"});
   render_box = new Vao();
   render_box->addVertexBuffer(3, &vertices[0], 72);
   render_box->addIndexBuffer(&indices[0], 36);
+  glEnable(GL_DEBUG_OUTPUT);
+  glDebugMessageCallback(messageCallback, 0);
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   // Generate Noise
-  std::vector<float> nd2d(64 * 64);
+  std::vector<float> nd2d(256 * 256 * 2);
 #pragma omp parallel for
-  for (int i = 0; i < 64; i++)
-    for (int j = 0; j < 64; j++)
-      nd2d[i * 64 + j] = SimplexNoise::noise(i / 8.0, j / 8.0);
-  noise2D = Texture::loadBinary(nd2d.data(), 64, 64, 1);
+  for (int i = 0; i < 256; i++)
+    for (int j = 0; j < 256; j++) {
+
+      nd2d[i * 256 * 2 + j * 2] =
+          SimplexNoise::noise(i / 64.0, j / 64.0, (i + j) / 64.0);
+      nd2d[i * 256 * 2 + j * 2 + 1] =
+          SimplexNoise::noise(i / 64.0, j / 64.0, (j - i) / 64.0);
+    }
+  noise2D = Texture::loadBinary(nd2d.data(), 256, 256, 2);
+  start_point = std::chrono::steady_clock::now();
 }
 void cloud_renderer::set_view_angle_y(float p) {
   angle_r = (p / 360.0) * 2 * 3.141592;
@@ -113,7 +131,12 @@ bool cloud_renderer::render(const Glib::RefPtr<Gdk::GLContext> &context) {
   glCullFace(GL_FRONT);
   program->load("backside", 1);
   program->load("stepSize", stepSize);
+  program->load(
+      "time", ((std::chrono::duration<float>)(std::chrono::steady_clock::now() -
+                                              start_point))
+                  .count());
   program->loadTexture("frontside_tex", back_side->getColorTexture(), 0);
+  program->loadTexture("noise2D", noise2D, 1);
   render_box->draw();
   render_box->unbind();
   program->stop();
