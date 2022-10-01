@@ -44,7 +44,7 @@ float testFunc(vec3 x){
   vec3 p = x;
   p.xy = p.xy * 0.5 + 0.5;
   p.z = (p.z + 1.0)/3.0;
-  return noise(p.xz - p.y * p.x + p.z);
+  return noise(p.yz - p.x * p.y + p.z);
 }
 //marches a ray to the sun to calculate how much light is hitting the point
 float transmittanceRay(vec3 start, float density){
